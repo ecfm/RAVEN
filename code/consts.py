@@ -3,20 +3,22 @@ class global_consts():
 
     platform = "server"
     cuda = 1
+    SDK_PATH = "/Users/cask/MultiComp/CMU-MultimodalSDK"
 
     dataset = "MOSI"
     data_path = None
     raw_path = None
     if dataset == "MOSI":
-        data_path = "/home/data/wangyansen/cmumosi/"
+        data_path = "../../CMU-MultimodalSDK-Experiment/data/"
     elif dataset == "iemocap":
         data_path = "/media/bighdd7/yansen/code/tools/iemocap/"
         raw_path =  "/media/bighdd4/Paul/mosi2/experiments/iemocap/"
+    embed_path = "/Users/cask/Downloads/glove.840B.300d.txt"
     sentiment = "sad" # for IEMOCAP, choose from happy, angry, sad and neutral
 
     old_data = True
 
-    log_path = "/media/bighdd7/yansen/code/DALSTM/result/iemocap/happy/"
+    log_path = None
     HPID = -1
 
     lastState = True
@@ -77,7 +79,7 @@ class global_consts():
     test_acc_at_valid_max = 0
 
     def logParameters(self):
-        print "Hyperparameters:"
+        print( "Hyperparameters:")
         for name in dir(global_consts):
             if name.find("__") == -1 and name.find("max") == -1 and name.find("min") == -1:
-                print "\t%s: %s" % (name, str(getattr(global_consts, name)))
+                print( "\t%s: %s" % (name, str(getattr(global_consts, name))))

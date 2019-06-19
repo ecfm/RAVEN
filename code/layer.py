@@ -29,7 +29,7 @@ class LSTM(nn.Module):
         self.h_dim = hidden_dim
         self.layer = layer
         if layer <= 0:
-            print "Error: The number of layer should be a positive integer, but got [%s] instead." % str(layer)
+            print("Error: The number of layer should be a positive integer, but got [%s] instead." % str(layer))
 
         self.add_module("layer_1", LSTMLayer(self.i_dim, self.h_dim))
         for i in range(1, self.layer):

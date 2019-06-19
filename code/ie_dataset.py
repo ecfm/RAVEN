@@ -32,7 +32,7 @@ class IEDataset(Data.Dataset):
         self.root = root
         self.cls = cls
         if len(IEDataset.trainset.labelOutput) != 0:
-            print "Data has been preiviously loaded, fetching from previous lists."
+            print("Data has been preiviously loaded, fetching from previous lists.")
         else:
             dataset = IEDataset.trainset
             dataset.wordInput, dataset.wordLen, dataset.covarepInput, dataset.covarepLen, dataset.facetInput, dataset.facetLen, dataset.labelOutput = fetch_data("train")

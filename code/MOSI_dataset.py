@@ -1,9 +1,20 @@
-import os
+from collections import defaultdict
+
 import torch
 import torch.utils.data as Data
 import numpy as np
-import cPickle as pickle
+from consts import global_consts as gc
+import sys
 
+if gc.SDK_PATH is None:
+    print("SDK path is not specified! Please specify first in constants/paths.py")
+    exit(0)
+else:
+    print("Added gc.SDK_PATH")
+    import os
+
+    print(os.getcwd())
+    sys.path.append(gc.SDK_PATH)
 
 from mmsdk import mmdatasdk
 from mmsdk.mmdatasdk import computational_sequence
@@ -12,11 +23,13 @@ import mmsdk.mmdatasdk.dataset.standard_datasets.CMU_MOSI.cmu_mosi_std_folds as 
 
 from consts import global_consts as gc
 
+
 def mid(a):
     return (a[0] + a[1]) / 2.0
 
+
 class MOSISubdata():
-    def __init__(self, name = "train"):
+    def __init__(self, name="train"):
         self.name = name
         self.covarepInput = []
         self.covarepLength = []
@@ -26,16 +39,24 @@ class MOSISubdata():
         self.facetLength = []
         self.labelOutput = []
 
+
+# construct a word2id mapping that automatically takes increment when new words are encountered
+word2id = defaultdict(lambda: len(word2id))
+
+
 class MOSIDataset(Data.Dataset):
     trainset = MOSISubdata("train")
     testset = MOSISubdata("test")
     validset = MOSISubdata("valid")
 
+    UNK = word2id['<unk>']
+    PAD = word2id['<pad>']
+
     def __init__(self, root, cls="train", src="csd", save=False):
         self.root = root
         self.cls = cls
         if len(MOSIDataset.trainset.labelOutput) != 0 and cls != "train":
-            print "Data has been preiviously loaded, fetching from previous lists."
+            print("Data has been previously loaded, fetching from previous lists.")
         else:
             self.readFromCSD()
             self.alignment()
@@ -56,10 +77,10 @@ class MOSIDataset(Data.Dataset):
         self.labelOutput = self.dataset.labelOutput[:]
 
     def readFromCSD(self):
-        labelCompSeq = computational_sequence(self.root+'CMU_MOSI_Opinion_Labels.csd').data
-        facetCompSeq = computational_sequence(self.root+'CMU_MOSI_VisualFacet_4.1.csd').data
-        wordCompSeq = computational_sequence(self.root+'CMU_MOSI_TimestampedWordVectors.csd').data
-        covarepCompSeq = computational_sequence(self.root+'CMU_MOSI_COVAREP.csd').data
+        labelCompSeq = computational_sequence(self.root + 'CMU_MOSI_Opinion_Labels.csd').data
+        facetCompSeq = computational_sequence(self.root + 'CMU_MOSI_VisualFacet_4.1.csd').data
+        wordCompSeq = computational_sequence(self.root + 'CMU_MOSI_ModifiedTimestampedWords.csd').data
+        covarepCompSeq = computational_sequence(self.root + 'CMU_MOSI_COVAREP.csd').data
 
         self.vidList = []
         self.sidList = []
@@ -70,13 +91,15 @@ class MOSIDataset(Data.Dataset):
         self.covarepInterval = []
         self.wordList = []
         self.wordInterval = []
+
+        wordids_List = []
         for i, vid in enumerate(labelCompSeq):
             if gc.debug:
                 if i > 5:
                     break
             if i == 88 or i == 66:
                 continue
-            print "processing video %d, uid %s" % (i, vid)
+            print("processing video %d, uid %s" % (i, vid))
             labels = labelCompSeq[vid]['features']
             sen_intervals = labelCompSeq[vid]['intervals']
             facet = facetCompSeq[vid]['features']
@@ -86,7 +109,7 @@ class MOSIDataset(Data.Dataset):
             words = wordCompSeq[vid]['features']
             word_intervals = wordCompSeq[vid]['intervals']
 
-            #add basic infomation
+            # add basic infomation
             sen_num = 0
             while sen_num < len(labels):
                 self.labelList.append(labels[sen_num])
@@ -94,7 +117,7 @@ class MOSIDataset(Data.Dataset):
                 self.sidList.append(sen_num)
                 sen_num += 1
 
-            #add word vectors
+            # add word ids
             start, end = 0, 0
             sen_num = 0
             while sen_num < len(labels):
@@ -103,19 +126,15 @@ class MOSIDataset(Data.Dataset):
                 end = start
                 while end < len(words) and mid(word_intervals[end]) < sen_intervals[sen_num][1]:
                     end += 1
-                toAppend = []
-                toAppendInterval = []
-                for k in range(start, end):
-                    toAppend.append(words[k])
-                    toAppendInterval.append(word_intervals[k])
-                self.wordList.append(toAppend)
-                self.wordInterval.append(toAppendInterval)
+                toAppend = [word2id[word_feat[0].decode('utf-8')] for word_feat in words[start:end]]
+                wordids_List.append(toAppend)
+                self.wordInterval.append(word_intervals[start:end])
                 if len(toAppend) > 50:
-                    print len(toAppend)
+                    print(len(toAppend))
                 start = end
                 sen_num += 1
 
-            #add facets
+            # add facets
             start, end = 0, 0
             sen_num = 0
             while sen_num < len(labels):
@@ -129,7 +148,7 @@ class MOSIDataset(Data.Dataset):
                 start = end
                 sen_num += 1
 
-            #add covarep
+            # add covarep
             start, end = 0, 0
             sen_num = 0
             while sen_num < len(labels):
@@ -142,6 +161,24 @@ class MOSIDataset(Data.Dataset):
                 self.covarepInterval.append(covarep_intervals[start:end])
                 start = end
                 sen_num += 1
+
+        emb_mat = np.random.randn(len(word2id), 300)
+        f = open(gc.embed_path, 'r')
+        found = 0
+        for line in f:
+            content = line.strip().split()
+            word = ' '.join(content[:-300])
+            if word in word2id:
+                word_id = word2id[word]
+                vector = np.asarray(list(map(lambda x: float(x), content[-300:])))
+                emb_mat[word_id, :] = vector
+                found += 1
+        print(f"Found {found} words in the embedding file.")
+        for list_id, word_ids in enumerate(wordids_List):
+            toAppend = []
+            for word_id in word_ids:
+                toAppend.append(emb_mat[word_id])
+            self.wordList.append(toAppend)
 
     def alignment(self):
         trainvid = std_folds.standard_train_fold
@@ -170,7 +207,8 @@ class MOSIDataset(Data.Dataset):
             start, end = 0, 0
             for j in range(len(self.wordList[i])):
                 facetV = []
-                while start < len(self.facetInterval[i]) and mid(self.facetInterval[i][start]) < self.wordInterval[i][j][0]:
+                while start < len(self.facetInterval[i]) and mid(self.facetInterval[i][start]) < \
+                        self.wordInterval[i][j][0]:
                     start += 1
                 end = start
 
@@ -204,7 +242,8 @@ class MOSIDataset(Data.Dataset):
             start, end = 0, 0
             for j in range(len(self.wordList[i])):
                 covarepV = []
-                while start < len(self.covarepInterval[i]) and mid(self.covarepInterval[i][start]) < self.wordInterval[i][j][0]:
+                while start < len(self.covarepInterval[i]) and mid(self.covarepInterval[i][start]) < \
+                        self.wordInterval[i][j][0]:
                     start += 1
                 end = start
 
@@ -212,7 +251,8 @@ class MOSIDataset(Data.Dataset):
                     startTime = mid(self.covarepInterval[i][start])
                 tempV = np.zeros(gc.covarepDim)
                 num = 0
-                while end < len(self.covarepInterval[i]) and mid(self.covarepInterval[i][end]) < self.wordInterval[i][j][1]:
+                while end < len(self.covarepInterval[i]) and mid(self.covarepInterval[i][end]) < \
+                        self.wordInterval[i][j][1]:
                     if mid(self.covarepInterval[i][end]) < startTime + timescale:
                         tempV = tempV + self.covarepList[i][end]
                     else:
@@ -235,15 +275,21 @@ class MOSIDataset(Data.Dataset):
 
     def __getitem__(self, index):
         inputLen = self.wordLength[index]
-        return torch.cat((torch.tensor(self.wordInput[index], dtype=torch.float32), torch.zeros((gc.padding_len - len(self.wordInput[index]), gc.wordDim))), 0),\
-                torch.cat((torch.tensor(self.covarepInput[index], dtype=torch.float32), torch.zeros((gc.padding_len - len(self.covarepInput[index]), gc.shift_padding_len, gc.covarepDim))), 0),\
-                torch.cat((torch.tensor(self.covarepLength[index], dtype=torch.long), torch.zeros(gc.padding_len - len(self.covarepLength[index]), dtype=torch.long)), 0),\
-                torch.cat((torch.tensor(self.facetInput[index], dtype=torch.float32), torch.zeros((gc.padding_len - len(self.facetInput[index]), gc.shift_padding_len, gc.facetDim))), 0),\
-                torch.cat((torch.tensor(self.facetLength[index], dtype=torch.long), torch.zeros(gc.padding_len - len(self.facetLength[index]), dtype=torch.long)), 0),\
-                inputLen, torch.tensor(self.labelOutput[index]).squeeze()
+        return torch.cat((torch.tensor(self.wordInput[index], dtype=torch.float32),
+                          torch.zeros((gc.padding_len - len(self.wordInput[index]), gc.wordDim))), 0), \
+               torch.cat((torch.tensor(self.covarepInput[index], dtype=torch.float32), torch.zeros(
+                   (gc.padding_len - len(self.covarepInput[index]), gc.shift_padding_len, gc.covarepDim))), 0), \
+               torch.cat((torch.tensor(self.covarepLength[index], dtype=torch.long),
+                          torch.zeros(gc.padding_len - len(self.covarepLength[index]), dtype=torch.long)), 0), \
+               torch.cat((torch.tensor(self.facetInput[index], dtype=torch.float32), torch.zeros(
+                   (gc.padding_len - len(self.facetInput[index]), gc.shift_padding_len, gc.facetDim))), 0), \
+               torch.cat((torch.tensor(self.facetLength[index], dtype=torch.long),
+                          torch.zeros(gc.padding_len - len(self.facetLength[index]), dtype=torch.long)), 0), \
+               inputLen, torch.tensor(self.labelOutput[index]).squeeze()
 
     def __len__(self):
         return len(self.labelOutput)
+
 
 if __name__ == "__main__":
     dataset = MOSIDataset(gc.data_path, src="csd", save=False)

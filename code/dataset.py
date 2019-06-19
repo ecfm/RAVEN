@@ -33,7 +33,7 @@ class MOSIDataset(Data.Dataset):
         self.root = root
         self.cls = cls
         if len(MOSIDataset.trainset.labelOutput) != 0:
-            print "Data has been preiviously loaded, fetching from previous lists."
+            print("Data has been preiviously loaded, fetching from previous lists.")
         else:
             self.readFromCSD()
             self.alignment()
@@ -60,8 +60,8 @@ class MOSIDataset(Data.Dataset):
         self.openfaceInput = self.dataset.openfaceInput[:]
         self.labelOutput = self.dataset.labelOutput[:]
         self.smileInput = self.dataset.smileInput[:]
-        print len(self.labelOutput)
-        print gc.padding_len
+        print(len(self.labelOutput))
+        print(gc.padding_len)
 
     def mergeDataset(self):
         MOSIDataset.trainset.phoInput.extend(MOSIDataset.testset.phoInput)
@@ -196,7 +196,7 @@ class MOSIDataset(Data.Dataset):
                     toAppend.append(openfaceV)
                 dataset.openfaceInput.append(toAppend[:])
 
-        print "max phonemes per word:", maxPhoPerWord
+        print("max phonemes per word:", maxPhoPerWord)
 
     def buildPhoVocab(self):
         self.phoDict = {}
@@ -206,7 +206,7 @@ class MOSIDataset(Data.Dataset):
                 if not self.phoDict.has_key(pho):
                     self.phoDict[pho] = num
                     num += 1
-        print "total phomemes: %d" % num
+        print("total phomemes: %d" % num)
         for pho in self.phoDict:
             self.phoDict[pho] = torch.zeros(1, num).scatter_(1, torch.tensor([[self.phoDict[pho]]]), 1.0).squeeze()
         return num
@@ -240,7 +240,7 @@ class MOSIDataset(Data.Dataset):
                     break
             if vid == "c5xsKMxpXnc":
                 continue
-            print "processing video %d, uid %s" % (i, vid)
+            print("processing video %d, uid %s" % (i, vid))
             labels = labelCompSeq[vid]['features']
             sen_intervals = labelCompSeq[vid]['intervals']
             phos = phoCompSeq[vid]['features']
@@ -293,7 +293,7 @@ class MOSIDataset(Data.Dataset):
                 self.wordList.append(toAppend)
                 self.wordInterval.append(toAppendInterval)
                 if len(toAppend) > 50:
-                    print len(toAppend)
+                    print(len(toAppend))
 
                 fout.write("%s: %s %f\n" % (vid, ''.join([x[0] + ' ' for x in raws[start:end]]), labels[sen_num]))
                 fout2.write("%s: %s %f\n" % (vid, ''.join([x[0] + ' ' if x[0] != "sp" else '' for x in raws[start:end]]), labels[sen_num]))

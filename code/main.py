@@ -21,35 +21,35 @@ def cor(X, Y):
 
 def logSummary():
     if gc.dataset == "iemocap":
-        print "best epoch: %d" % gc.best_epoch
-        print "highest training F1: %f" % gc.max_train_f1
-        print "highest testing F1: %f" % gc.max_test_f1
-        print "highest validation F1: %f" % gc.max_valid_f1
-        print "test F1 when validation F1 is the highest: %f" % gc.test_f1_at_valid_max
-        print "highest training accuracy: %f" % gc.max_train_acc
-        print "highest testing accuracy: %f" % gc.max_test_acc
-        print "highest validation accuracy: %f" % gc.max_valid_acc
-        print "test accuracy when validation accuracy is the highest: %f" % gc.test_acc_at_valid_max
-        print "highest training precision: %f" % gc.max_train_prec
-        print "highest testing precision: %f" % gc.max_test_prec
-        print "highest validation precision: %f" % gc.max_valid_prec
-        print "test precision when validation precision is the highest: %f" % gc.test_prec_at_valid_max
-        print "highest training recall: %f" % gc.max_train_recall
-        print "highest testing recall: %f" % gc.max_test_recall
-        print "highest validation recall: %f" % gc.max_valid_recall
-        print "test recall when validation recall is the highest: %f" % gc.test_recall_at_valid_max
+        print("best epoch: %d" % gc.best_epoch)
+        print("highest training F1: %f" % gc.max_train_f1)
+        print("highest testing F1: %f" % gc.max_test_f1)
+        print("highest validation F1: %f" % gc.max_valid_f1)
+        print("test F1 when validation F1 is the highest: %f" % gc.test_f1_at_valid_max)
+        print("highest training accuracy: %f" % gc.max_train_acc)
+        print("highest testing accuracy: %f" % gc.max_test_acc)
+        print("highest validation accuracy: %f" % gc.max_valid_acc)
+        print("test accuracy when validation accuracy is the highest: %f" % gc.test_acc_at_valid_max)
+        print("highest training precision: %f" % gc.max_train_prec)
+        print("highest testing precision: %f" % gc.max_test_prec)
+        print("highest validation precision: %f" % gc.max_valid_prec)
+        print("test precision when validation precision is the highest: %f" % gc.test_prec_at_valid_max)
+        print("highest training recall: %f" % gc.max_train_recall)
+        print("highest testing recall: %f" % gc.max_test_recall)
+        print("highest validation recall: %f" % gc.max_valid_recall)
+        print("test recall when validation recall is the highest: %f" % gc.test_recall_at_valid_max)
     elif gc.dataset == "MOSI":
-        print "best epoch: %d" % gc.best_epoch
-        print "lowest training MAE: %f" % gc.min_train_mae
-        print "lowest testing MAE: %f" % gc.min_test_mae
-        print "lowest validation MAE: %f" % gc.min_valid_mae
-        print "test MAE when validation MAE is the lowest: %f" % gc.test_mae_at_valid_min
-        print "highest testing correlation: %f" % gc.max_test_cor
-        print "highest validation correlation: %f" % gc.max_valid_cor
-        print "test correlation when validation correlation is the highest: %f" % gc.test_cor_at_valid_max
-        print "highest testing accuracy: %f" % gc.max_test_acc
-        print "highest validation accuracy: %f" % gc.max_valid_acc
-        print "test accuracy when validation accuracy is the highest: %f" % gc.test_acc_at_valid_max
+        print("best epoch: %d" % gc.best_epoch)
+        print("lowest training MAE: %f" % gc.min_train_mae)
+        print("lowest testing MAE: %f" % gc.min_test_mae)
+        print("lowest validation MAE: %f" % gc.min_valid_mae)
+        print("test MAE when validation MAE is the lowest: %f" % gc.test_mae_at_valid_min)
+        print("highest testing correlation: %f" % gc.max_test_cor)
+        print("highest validation correlation: %f" % gc.max_valid_cor)
+        print("test correlation when validation correlation is the highest: %f" % gc.test_cor_at_valid_max)
+        print("highest testing accuracy: %f" % gc.max_test_acc)
+        print("highest validation accuracy: %f" % gc.max_valid_acc)
+        print("test accuracy when validation accuracy is the highest: %f" % gc.test_acc_at_valid_max)
 
 def stopTraining(signum, frame):
     global savedStdout
@@ -64,9 +64,6 @@ def train_model(arg_dict):
     except:
         pass
 
-    for key in arg_dict:
-        if gc.__dict__.has_key(key):
-            gc.__dict__[key] = arg_dict[key]
     global savedStdout
     savedStdout = sys.stdout
 
@@ -102,16 +99,16 @@ def train_model(arg_dict):
             num_workers=1,
         )
 
-    print >> savedStdout, "HPID:%d:Data Successfully Loaded." % gc.HPID
+    print("HPID:%d:Data Successfully Loaded." % gc.HPID)
 
     device = torch.device("cuda:%d" % gc.cuda if torch.cuda.is_available() else "cpu")
     if torch.cuda.is_available():
         torch.cuda.set_device(gc.cuda)
     gc.device = device
-    print "running device: ", device
+    print("running device: ", device)
 
     net = Net()
-    print net
+    print(net)
     net.to(device)
 
     if gc.dataset == "iemocap":
@@ -125,11 +122,11 @@ def train_model(arg_dict):
     running_loss = 0.0
     for epoch in range(gc.epoch_num):
         if epoch % 10 == 0:
-            print >> savedStdout, "HPID:%d:Training Epoch %d." % (gc.HPID, epoch)
+            print("HPID:%d:Training Epoch %d." % (gc.HPID, epoch))
         if epoch % 100 == 0:
             logSummary()
         with torch.no_grad():
-            print "Epoch #%d results:" % epoch
+            print("Epoch #%d results:" % epoch)
             tp = 0
             fp = 0
             tn = 0
@@ -176,17 +173,17 @@ def train_model(arg_dict):
                     test_recall = float(tp) / (tp + fn)
                     test_f1 = f1_score(label_all, output_all, average="weighted")
                     test_acc = float(tp + tn) / (tp + tn + fp + fn)
-                print "\ttest precision: %f" % test_prec
-                print "\ttest recall: %f" % test_recall
-                print "\ttest F1: %f" % test_f1
-                print "\ttest accuracy: %f" % test_acc
+                print("\ttest precision: %f" % test_prec)
+                print("\ttest recall: %f" % test_recall)
+                print("\ttest F1: %f" % test_f1)
+                print("\ttest accuracy: %f" % test_acc)
             elif gc.dataset == "MOSI":
                 test_mae = tot_err / tot_num
                 test_cor = cor(output_all, label_all)
                 test_acc = float(tot_right) / tot_num
-                print "\ttest Correlation coefficient: %f" % cor(output_all, label_all)
-                print "\ttest mean error: %f" % test_mae
-                print "\ttest accuracy: %f" % test_acc
+                print("\ttest Correlation coefficient: %f" % cor(output_all, label_all))
+                print("\ttest mean error: %f" % test_mae)
+                print("\ttest accuracy: %f" % test_acc)
 
             tp = 0
             fp = 0
@@ -234,10 +231,10 @@ def train_model(arg_dict):
                     valid_f1 = f1_score(label_all, output_all, average="weighted")
                     valid_acc = float(tp + tn) / (tp + tn + fp + fn)
                 if (tp + fp + tn + fn) != 0:
-                    print "\tvalid precision: %f" % valid_prec
-                    print "\tvalid recall: %f" % valid_recall
-                    print "\tvalid F1: %f" % valid_f1
-                    print "\tvalid accuracy: %f" % valid_acc
+                    print("\tvalid precision: %f" % valid_prec)
+                    print("\tvalid recall: %f" % valid_recall)
+                    print("\tvalid F1: %f" % valid_f1)
+                    print("\tvalid accuracy: %f" % valid_acc)
                     if valid_f1 > gc.max_valid_f1:
                         gc.max_valid_f1 = valid_f1
                         gc.test_f1_at_valid_max = test_f1
@@ -264,9 +261,9 @@ def train_model(arg_dict):
                     valid_mae = tot_err / tot_num
                     valid_cor = cor(output_all, label_all)
                     valid_acc = float(tot_right) / tot_num
-                    print "\tvalid Correlation coefficient: %f" % cor(output_all, label_all)
-                    print "\tvalid mean error: %f" % (valid_mae)
-                    print "\tvalid accuracy: %f" % (valid_acc)
+                    print("\tvalid Correlation coefficient: %f" % cor(output_all, label_all))
+                    print("\tvalid mean error: %f" % (valid_mae))
+                    print("\tvalid accuracy: %f" % (valid_acc))
                     if valid_mae < gc.min_valid_mae:
                         gc.min_valid_mae = valid_mae
                         gc.test_mae_at_valid_min = test_mae
@@ -341,10 +338,10 @@ def train_model(arg_dict):
                     train_recall = float(tp) / (tp + fn)
                     train_f1 = f1_score(label_all, output_all, average="weighted")
                     train_acc = float(tp + tn) / (tp + tn + fp + fn)
-                print "\ttrain precision: %f" % train_prec
-                print "\ttrain recall: %f" % train_recall
-                print "\ttrain F1: %f" % train_f1
-                print "\ttrain accuracy: %f" % train_acc
+                print("\ttrain precision: %f" % train_prec)
+                print("\ttrain recall: %f" % train_recall)
+                print("\ttrain F1: %f" % train_f1)
+                print("\ttrain accuracy: %f" % train_acc)
                 if train_f1 > gc.max_train_f1:
                     gc.max_train_f1 = train_f1
                 if train_prec > gc.max_train_prec:
@@ -356,34 +353,34 @@ def train_model(arg_dict):
         elif gc.dataset == "MOSI":
             train_mae = tot_err / tot_num
             train_acc = float(tot_right) / tot_num
-            print "\ttrain mean error: %f" % train_mae
-            print "\ttrain acc: %f" % train_acc
+            print("\ttrain mean error: %f" % train_mae)
+            print("\ttrain acc: %f" % train_acc)
             if train_mae < gc.min_train_mae:
                 gc.min_train_mae = train_mae
             if train_acc > gc.max_train_acc:
                 gc.max_train_acc = train_acc
 
     logSummary()
-    if gc.log_path != None:
-        sys.stdout = savedStdout
-        with open("%ssummary.csv" % gc.log_path, "a+") as f:
-            for arg in arg_dict:
-                f.write("%s," % str(arg_dict[arg]))
-            f.write("%d," % best_epoch)
-            if gc.dataset == "iemocap":
-                f.write("%f," % max_test_f1)
-                f.write("%f," % max_test_prec)
-                f.write("%f," % max_test_recall)
-                f.write("%f," % max_test_acc)
-                f.write("%f," % test_f1_at_valid_max)
-                f.write("%f\n" % test_acc_at_valid_max)
-            else:
-                f.write("%f," % min_test_mae)
-                f.write("%f," % max_test_cor)
-                f.write("%f," % max_test_acc)
-                f.write("%f," % test_mae_at_valid_min)
-                f.write("%f," % test_cor_at_valid_max)
-                f.write("%f,\n" % test_acc_at_valid_max)
+    # if gc.log_path != None:
+    #     sys.stdout = savedStdout
+    #     with open("%ssummary.csv" % gc.log_path, "a+") as f:
+    #         for arg in arg_dict:
+    #             f.write("%s," % str(arg_dict[arg]))
+    #         f.write("%d," % best_epoch)
+    #         if gc.dataset == "iemocap":
+    #             f.write("%f," % max_test_f1)
+    #             f.write("%f," % max_test_prec)
+    #             f.write("%f," % max_test_recall)
+    #             f.write("%f," % max_test_acc)
+    #             f.write("%f," % test_f1_at_valid_max)
+    #             f.write("%f\n" % test_acc_at_valid_max)
+    #         else:
+    #             f.write("%f," % min_test_mae)
+    #             f.write("%f," % max_test_cor)
+    #             f.write("%f," % max_test_acc)
+    #             f.write("%f," % test_mae_at_valid_min)
+    #             f.write("%f," % test_cor_at_valid_max)
+    #             f.write("%f,\n" % test_acc_at_valid_max)
 
 if __name__ == "__main__":
     train_model({ "log_path" : None })
