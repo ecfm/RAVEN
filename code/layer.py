@@ -44,7 +44,7 @@ class LSTM(nn.Module):
             c = hc_0[1].clone()
 
         for i in range(self.layer):
-            inputs, hc_n = self.__getattr__("layer_%d" % (i + 1))(inputs, map(lambda x:x[:, i, :].squeeze(), [h, c]))
+            inputs, hc_n = self.__getattr__("layer_%d" % (i + 1))(inputs, list(map(lambda x:x[:, i, :].squeeze(), [h, c])))
             if i == 0:
                 h_out, c_out = map(lambda x:x.unsqueeze(1), hc_n)
             else:

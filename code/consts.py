@@ -1,8 +1,8 @@
 class global_consts():
-    debug = False
+    debug = True
 
     platform = "server"
-    cuda = 1
+    cuda = 0
     SDK_PATH = "/Users/cask/MultiComp/CMU-MultimodalSDK"
 
     dataset = "MOSI"

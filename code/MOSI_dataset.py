@@ -95,7 +95,7 @@ class MOSIDataset(Data.Dataset):
         wordids_List = []
         for i, vid in enumerate(labelCompSeq):
             if gc.debug:
-                if i > 5:
+                if i > 0:
                     break
             if i == 88 or i == 66:
                 continue
@@ -163,17 +163,18 @@ class MOSIDataset(Data.Dataset):
                 sen_num += 1
 
         emb_mat = np.random.randn(len(word2id), 300)
-        f = open(gc.embed_path, 'r')
-        found = 0
-        for line in f:
-            content = line.strip().split()
-            word = ' '.join(content[:-300])
-            if word in word2id:
-                word_id = word2id[word]
-                vector = np.asarray(list(map(lambda x: float(x), content[-300:])))
-                emb_mat[word_id, :] = vector
-                found += 1
-        print(f"Found {found} words in the embedding file.")
+        if not gc.debug:
+            f = open(gc.embed_path, 'r')
+            found = 0
+            for line in f:
+                content = line.strip().split()
+                word = ' '.join(content[:-300])
+                if word in word2id:
+                    word_id = word2id[word]
+                    vector = np.asarray(list(map(lambda x: float(x), content[-300:])))
+                    emb_mat[word_id, :] = vector
+                    found += 1
+            print(f"Found {found} words in the embedding file.")
         for list_id, word_ids in enumerate(wordids_List):
             toAppend = []
             for word_id in word_ids:
