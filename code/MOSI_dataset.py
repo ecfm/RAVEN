@@ -79,7 +79,7 @@ class MOSIDataset(Data.Dataset):
     def readFromCSD(self):
         labelCompSeq = computational_sequence(self.root + 'CMU_MOSI_Opinion_Labels.csd').data
         facetCompSeq = computational_sequence(self.root + 'CMU_MOSI_VisualFacet_4.1.csd').data
-        wordCompSeq = computational_sequence(self.root + 'CMU_MOSI_ModifiedTimestampedWords.csd').data
+        wordCompSeq = computational_sequence(self.root + 'CMU_MOSI_TimestampedWordVectors_1.1.csd').data
         covarepCompSeq = computational_sequence(self.root + 'CMU_MOSI_COVAREP.csd').data
 
         self.vidList = []
