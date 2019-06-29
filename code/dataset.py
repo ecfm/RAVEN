@@ -236,7 +236,7 @@ class MOSIDataset(Data.Dataset):
         fout2 = open("raw_data_no_sp.txt", 'w')
         for i, vid in enumerate(labelCompSeq):
             if gc.debug:
-                if i > 2:
+                if i > 0:
                     break
             if vid == "c5xsKMxpXnc":
                 continue

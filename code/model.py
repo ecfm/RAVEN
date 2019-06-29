@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from transformer import Models
 
 import layer
 
@@ -17,14 +18,19 @@ class Net(nn.Module):
         self.normcovarep = nn.BatchNorm2d(gc.padding_len, track_running_stats=False)
         self.dropcovarep = nn.Dropout(p=gc.dropProb)
         self.fc_rszcovarep = nn.Linear(gc.covarepDim, gc.normDim)
-        self.covarepLSTM = nn.LSTM(gc.normDim, gc.cellDim)
-        self.covarepW = nn.Linear(gc.cellDim + gc.wordDim, 1)
+
+        self.covarepTransformer = Models.TransformerEncoder(gc.shift_padding_len, gc.normDim,
+            gc.n_layers, gc.n_head, gc.normDim, gc.normDim,
+            gc.normDim, gc.ff_iner_dim)
+        self.covarepW = nn.Linear(gc.normDim + gc.wordDim, 1)
 
         self.normFacet = nn.BatchNorm2d(gc.padding_len, track_running_stats=False)
         self.dropFacet = nn.Dropout(p=gc.dropProb)
         self.fc_rszFacet = nn.Linear(gc.facetDim, gc.normDim)
-        self.facetLSTM = nn.LSTM(gc.normDim, gc.cellDim)
-        self.facetW = nn.Linear(gc.cellDim + gc.wordDim, 1)
+        self.facetTransformer = Models.TransformerEncoder(gc.shift_padding_len, gc.normDim,
+                                  gc.n_layers, gc.n_head, gc.normDim, gc.normDim,
+                                  gc.normDim, gc.ff_iner_dim)
+        self.facetW = nn.Linear(gc.normDim + gc.wordDim, 1)
 
         self.calcAddon = nn.Linear(2 * gc.cellDim, gc.wordDim)
 
@@ -44,22 +50,34 @@ class Net(nn.Module):
         covarep = self.normcovarep(covarep)
         covarepInput = self.fc_rszcovarep(self.dropcovarep(covarep))
         covarepFlat = covarepInput.data.contiguous().view(-1, gc.shift_padding_len, gc.normDim)
-        output, _ = self.covarepLSTM(covarepFlat)
-        output = torch.cat([torch.zeros(batch * gc.padding_len, 1, gc.cellDim).to(gc.device), output], 1)
+        # covarepLensFlat.shape = batch * gc.padding_len
         covarepLensFlat = covarepLens.data.contiguous().view(-1)
+        coverp_pos = torch.LongTensor(np.array([[i+1 if i < len else 0 for i in range(gc.shift_padding_len)]
+                                                for len in covarepLensFlat]))
+        # output.shape = [batch * gc.padding_len, gc.shift_padding_len, gc.normDim]
+        output = self.covarepTransformer(covarepFlat, coverp_pos)[0]
+        # output.shape = [batch * gc.padding_len, gc.shift_padding_len + 1, gc.normDim]
+        output = torch.cat([torch.zeros(batch * gc.padding_len, 1, gc.normDim).to(gc.device), output], 1)
+        # covarepSelector.shape = [batch * gc.padding_len, 1, gc.shift_padding_len + 1]
         covarepSelector = torch.zeros(batch * gc.padding_len, 1, gc.shift_padding_len + 1).to(gc.device).scatter_(2, covarepLensFlat.unsqueeze(1).unsqueeze(1), 1.0)
+        # covarepState.shape = [batch * gc.padding_len, gc.normDim]
         covarepState = torch.matmul(covarepSelector, output).squeeze()
 
         #facet = self.normFacet(facet)
         facetInput = self.fc_rszFacet(self.dropFacet(facet))
         facetFlat = facetInput.data.contiguous().view(-1, gc.shift_padding_len, gc.normDim)
-        output, _ = self.facetLSTM(facetFlat)
-        output = torch.cat([torch.zeros(batch * gc.padding_len, 1, gc.cellDim).to(gc.device), output], 1)
         facetLensFlat = facetLens.data.contiguous().view(-1)
+        facet_pos = torch.LongTensor(np.array([[i + 1 if i < len else 0 for i in range(gc.shift_padding_len)]
+                                                for len in facetLensFlat]))
+        output = self.facetTransformer(facetFlat, facet_pos)[0]
+        output = torch.cat([torch.zeros(batch * gc.padding_len, 1, gc.cellDim).to(gc.device), output], 1)
         facetSelector = torch.zeros(batch * gc.padding_len, 1, gc.shift_padding_len + 1).to(gc.device).scatter_(2, facetLensFlat.unsqueeze(1).unsqueeze(1), 1.0)
+        # facetState.shape = [batch * gc.padding_len, gc.normDim]
         facetState = torch.matmul(facetSelector, output).squeeze()
 
+        # wordFlat.shape = [batch * gc.padding_len, gc.wordDim]
         wordFlat = words.data.contiguous().view(-1, gc.wordDim)
+
         covarepWeight = self.covarepW(torch.cat([covarepState, wordFlat], 1))
         facetWeight = self.facetW(torch.cat([facetState, wordFlat], 1))
         covarepState = covarepState * covarepWeight

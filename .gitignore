@@ -1,5 +1,4 @@
-*.*/
-*.*
+.idea/
 *.pyc
 *screen*
 *raw_data*

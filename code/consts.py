@@ -1,9 +1,9 @@
 class global_consts():
-    debug = True
+    debug = False
 
     platform = "server"
     cuda = 0
-    SDK_PATH = "/Users/cask/MultiComp/CMU-MultimodalSDK"
+    SDK_PATH = "../../CMU-MultimodalSDK"
 
     dataset = "MOSI"
     data_path = None
@@ -41,7 +41,10 @@ class global_consts():
 
     cellDim = 150
     normDim = 150
+    n_head = 6
     hiddenDim = 300
+    n_layers = 6
+    ff_iner_dim = 2048
 
     device = None
 
