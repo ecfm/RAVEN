@@ -1,14 +1,10 @@
 from consts import global_consts as gc
 from model import Net
 
-if gc.dataset == "iemocap":
-    from ie_dataset import IEDataset as ds
-else:
-    from MOSI_dataset import MOSIDataset as ds
+from MOSI_dataset import MOSIDataset as ds
 import torch
 import torch.optim as optim
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.utils.data as Data
 import numpy as np
 from sklearn.metrics import f1_score
