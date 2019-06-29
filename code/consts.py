@@ -39,11 +39,14 @@ class global_consts():
 
     dropProb = 0.2
 
-    cellDim = 150
-    normDim = 150
-    n_head = 6
-    hiddenDim = 300
-    n_layers = 6
+    # cellDim = 150
+    normDim = 100
+    n_head = 4
+    # hiddenDim = 300
+    n_layers = 4
+
+    n_head_large = 6
+    n_layers_large = 6
     ff_iner_dim = 2048
 
     device = None
