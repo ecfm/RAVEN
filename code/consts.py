@@ -9,7 +9,7 @@ class global_consts():
     data_path = None
     raw_path = None
     if dataset == "MOSI":
-        data_path = "../../CMU-MultimodalSDK-Experiment/data/"
+        data_path = "../../MOSI/"
     elif dataset == "iemocap":
         data_path = "/media/bighdd7/yansen/code/tools/iemocap/"
         raw_path =  "/media/bighdd4/Paul/mosi2/experiments/iemocap/"

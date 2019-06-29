@@ -17,38 +17,39 @@ class Net(nn.Module):
 
         self.normcovarep = nn.BatchNorm2d(gc.padding_len, track_running_stats=False)
         self.dropcovarep = nn.Dropout(p=gc.dropProb)
-        self.fc_rszcovarep = nn.Linear(gc.covarepDim, gc.normDim)
+        self.fc_rszcCovarep = nn.Linear(gc.covarepDim, gc.normDim)
 
         self.covarepTransformer = Models.TransformerEncoder(gc.shift_padding_len, gc.normDim,
-            gc.n_layers, gc.n_head, gc.normDim, gc.normDim,
-            gc.normDim, gc.ff_iner_dim)
-        self.covarepW = nn.Linear(gc.normDim + gc.wordDim, 1)
+                                                            gc.n_layers, gc.n_head, gc.normDim, gc.normDim,
+                                                            gc.normDim, gc.ff_iner_dim)
+        self.covarepTemporalTransformer = Models.TransformerEncoder(gc.padding_len, gc.normDim,
+                                                                    gc.n_layers, gc.n_head, gc.normDim, gc.normDim,
+                                                                    gc.normDim, gc.ff_iner_dim)
+
+        self.wordTemporalTransformer = Models.TransformerEncoder(gc.padding_len, gc.wordDim,
+                                                                 gc.n_layers, gc.n_head, gc.wordDim, gc.wordDim,
+                                                                 gc.wordDim, gc.ff_iner_dim)
 
         self.normFacet = nn.BatchNorm2d(gc.padding_len, track_running_stats=False)
         self.dropFacet = nn.Dropout(p=gc.dropProb)
         self.fc_rszFacet = nn.Linear(gc.facetDim, gc.normDim)
         self.facetTransformer = Models.TransformerEncoder(gc.shift_padding_len, gc.normDim,
                                   gc.n_layers, gc.n_head, gc.normDim, gc.normDim,
-                                  gc.normDim, gc.ff_iner_dim)
-        self.facetW = nn.Linear(gc.normDim + gc.wordDim, 1)
-
-        self.calcAddon = nn.Linear(2 * gc.cellDim, gc.wordDim)
-
-        self.dropWord = nn.Dropout(p=gc.dropProb)
-        input_size += gc.wordDim
-
-        self.lstm1 = layer.LSTM(input_size, gc.hiddenDim, layer=gc.layer)
-
-        if gc.lastState:
-            self.fc_afterLSTM = nn.Linear(gc.hiddenDim, 1)
-        else:
-            self.fc_afterLSTM = nn.Linear(gc.hiddenDim * gc.padding_len, 1)
+                                                          gc.normDim, gc.ff_iner_dim)
+        self.facetTemporalTransformer = Models.TransformerEncoder(gc.padding_len, gc.normDim,
+                                                                  gc.n_layers, gc.n_head, gc.normDim, gc.normDim,
+                                                                  gc.normDim, gc.ff_iner_dim)
+        multiModelDim = gc.wordDim + 2 * gc.normDim
+        self.multiModelTransformer = Models.TransformerEncoder(gc.padding_len, multiModelDim,
+                                                               gc.n_layers, gc.n_head, multiModelDim, multiModelDim,
+                                                               multiModelDim, gc.ff_iner_dim)
+        self.finalW = nn.Linear(gc.padding_len * multiModelDim, 1)
 
     def forward(self, words, covarep, covarepLens, facet, facetLens, inputLens):
         batch = covarep.size()[0]
         inputs = None
         covarep = self.normcovarep(covarep)
-        covarepInput = self.fc_rszcovarep(self.dropcovarep(covarep))
+        covarepInput = self.fc_rszcCovarep(self.dropcovarep(covarep))
         covarepFlat = covarepInput.data.contiguous().view(-1, gc.shift_padding_len, gc.normDim)
         # covarepLensFlat.shape = batch * gc.padding_len
         covarepLensFlat = covarepLens.data.contiguous().view(-1)
@@ -60,8 +61,13 @@ class Net(nn.Module):
         output = torch.cat([torch.zeros(batch * gc.padding_len, 1, gc.normDim).to(gc.device), output], 1)
         # covarepSelector.shape = [batch * gc.padding_len, 1, gc.shift_padding_len + 1]
         covarepSelector = torch.zeros(batch * gc.padding_len, 1, gc.shift_padding_len + 1).to(gc.device).scatter_(2, covarepLensFlat.unsqueeze(1).unsqueeze(1), 1.0)
-        # covarepState.shape = [batch * gc.padding_len, gc.normDim]
-        covarepState = torch.matmul(covarepSelector, output).squeeze()
+        # covarepState.shape = [batch, gc.padding_len, gc.normDim]
+        covarepState = torch.matmul(covarepSelector, output).squeeze().view(batch, gc.padding_len, gc.normDim)
+        covarepState_pos = torch.LongTensor(np.array([[j+1 if torch.abs(covarepState[i][j]).sum() > 0 else 0
+                                                       for j in range(gc.padding_len)]
+                                                      for i in range(batch)])).to(gc.device)
+        covarepState = self.covarepTemporalTransformer(covarepState, covarepState_pos)[0]
+
 
         #facet = self.normFacet(facet)
         facetInput = self.fc_rszFacet(self.dropFacet(facet))
@@ -72,33 +78,21 @@ class Net(nn.Module):
         output = self.facetTransformer(facetFlat, facet_pos)[0]
         output = torch.cat([torch.zeros(batch * gc.padding_len, 1, gc.cellDim).to(gc.device), output], 1)
         facetSelector = torch.zeros(batch * gc.padding_len, 1, gc.shift_padding_len + 1).to(gc.device).scatter_(2, facetLensFlat.unsqueeze(1).unsqueeze(1), 1.0)
-        # facetState.shape = [batch * gc.padding_len, gc.normDim]
-        facetState = torch.matmul(facetSelector, output).squeeze()
+        # facetState.shape = [batch, gc.padding_len, gc.normDim]
+        facetState = torch.matmul(facetSelector, output).view(batch, gc.padding_len, gc.normDim)
+        facetState_pos = torch.LongTensor(np.array([[j + 1 if torch.abs(facetState[i][j]).sum() > 0 else 0
+                                                     for j in range(gc.padding_len)]
+                                                    for i in range(batch)])).to(gc.device)
+        facetState = self.covarepTemporalTransformer(facetState, facetState_pos)[0]
 
-        # wordFlat.shape = [batch * gc.padding_len, gc.wordDim]
-        wordFlat = words.data.contiguous().view(-1, gc.wordDim)
+        word_pos = torch.LongTensor(np.array([[i + 1 if i < len else 0 for i in range(gc.padding_len)]
+                                              for len in inputLens])).to(gc.device)
+        wordState = self.wordTemporalTransformer(words, word_pos)[0]
 
-        covarepWeight = self.covarepW(torch.cat([covarepState, wordFlat], 1))
-        facetWeight = self.facetW(torch.cat([facetState, wordFlat], 1))
-        covarepState = covarepState * covarepWeight
-        facetState = facetState * facetWeight
-        addon = self.calcAddon(torch.cat([covarepState, facetState], 1))
+        multiModelState = torch.cat([covarepState, facetState, wordState], 2)
+        multiModelState_pos = torch.LongTensor(np.array([[j + 1 if torch.abs(multiModelState[i][j]).sum() > 0 else 0
+                                                     for j in range(gc.padding_len)]
+                                                    for i in range(batch)])).to(gc.device)
+        multiModelState = self.multiModelTransformer(multiModelState, multiModelState_pos)[0].view(batch, -1)
 
-        addonL2 = torch.norm(addon, 2, 1)
-        addonL2 = torch.max(addonL2, torch.tensor([1.0]).to(gc.device)) / torch.tensor([gc.shift_weight]).to(gc.device)
-        addon = addon / addonL2.unsqueeze(1)
-        addon = addon.data.contiguous().view(batch, gc.padding_len, gc.wordDim)
-
-        wordsL2 = torch.norm(words, 2, 2).unsqueeze(2)
-        wordInput = self.dropWord(words + addon * wordsL2)
-
-        inputs = wordInput
-
-        output, _ = self.lstm1(inputs)
-        if gc.lastState:
-            self.selector = torch.zeros(batch, 1, gc.padding_len).to(gc.device).scatter_(2, (inputLens-1).unsqueeze(1).unsqueeze(1), 1.0)
-            spec_output = torch.matmul(self.selector, output).squeeze()
-        else:
-            spec_output = output.data.contiguous().view(-1, gc.hiddenDim * gc.padding_len)
-        final = self.fc_afterLSTM(spec_output)
-        return final.squeeze()
+        return self.finalW(multiModelState).squeeze()
