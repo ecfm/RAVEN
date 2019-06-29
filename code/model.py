@@ -53,7 +53,7 @@ class Net(nn.Module):
         # covarepLensFlat.shape = batch * gc.padding_len
         covarepLensFlat = covarepLens.data.contiguous().view(-1)
         coverp_pos = torch.LongTensor(np.array([[i+1 if i < len else 0 for i in range(gc.shift_padding_len)]
-                                                for len in covarepLensFlat]))
+                                                for len in covarepLensFlat])).to(gc.device)
         # output.shape = [batch * gc.padding_len, gc.shift_padding_len, gc.normDim]
         output = self.covarepTransformer(covarepFlat, coverp_pos)[0]
         # output.shape = [batch * gc.padding_len, gc.shift_padding_len + 1, gc.normDim]
@@ -68,7 +68,7 @@ class Net(nn.Module):
         facetFlat = facetInput.data.contiguous().view(-1, gc.shift_padding_len, gc.normDim)
         facetLensFlat = facetLens.data.contiguous().view(-1)
         facet_pos = torch.LongTensor(np.array([[i + 1 if i < len else 0 for i in range(gc.shift_padding_len)]
-                                                for len in facetLensFlat]))
+                                                for len in facetLensFlat])).to(gc.device)
         output = self.facetTransformer(facetFlat, facet_pos)[0]
         output = torch.cat([torch.zeros(batch * gc.padding_len, 1, gc.cellDim).to(gc.device), output], 1)
         facetSelector = torch.zeros(batch * gc.padding_len, 1, gc.shift_padding_len + 1).to(gc.device).scatter_(2, facetLensFlat.unsqueeze(1).unsqueeze(1), 1.0)
