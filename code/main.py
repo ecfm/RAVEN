@@ -133,12 +133,12 @@ def train_model(arg_dict):
             label_all = []
             output_all = []
             for data in test_loader:
-                words, covarep, covarepLen, facet, facetLen, inputLen, labels = data
+                words, covarep, facet, inputLen, labels = data
                 labels = labels.to(torch.float)
                 if covarep.size()[0] == 1:
                     continue
-                words, covarep, covarepLen, facet, facetLen, inputLen, labels = words.to(device), covarep.to(device), covarepLen.to(device), facet.to(device), facetLen.to(device), inputLen.to(device), labels.to(device)
-                outputs = net(words, covarep, covarepLen, facet, facetLen, inputLen)
+                words, covarep, facet, inputLen, labels = words.to(device), covarep.to(device), facet.to(device), inputLen.to(device), labels.to(device)
+                outputs = net(words, covarep, facet, inputLen)
                 if gc.dataset == "iemocap":
                     output_all.extend(torch.ge(outputs, 0).to(torch.long))
                 else:
@@ -191,12 +191,12 @@ def train_model(arg_dict):
             label_all = []
             output_all = []
             for data in valid_loader:
-                words, covarep, covarepLen, facet, facetLen, inputLen, labels = data
+                words, covarep, facet, inputLen, labels = data
                 labels = labels.to(torch.float)
                 if covarep.size()[0] == 1:
                     continue
-                words, covarep, covarepLen, facet, facetLen, inputLen, labels = words.to(device), covarep.to(device), covarepLen.to(device), facet.to(device), facetLen.to(device), inputLen.to(device), labels.to(device)
-                outputs = net(words, covarep, covarepLen, facet, facetLen, inputLen)
+                words, covarep, facet, inputLen, labels = words.to(device), covarep.to(device), facet.to(device), inputLen.to(device), labels.to(device)
+                outputs = net(words, covarep, facet, inputLen)
                 if gc.dataset == "iemocap":
                     output_all.extend(torch.ge(outputs, 0).to(torch.long))
                 else:
@@ -287,14 +287,14 @@ def train_model(arg_dict):
         label_all = []
         output_all = []
         for i, data in enumerate(train_loader):
-            words, covarep, covarepLen, facet, facetLen, inputLen, labels = data
+            words, covarep, facet, inputLen, labels = data
             if covarep.size()[0] == 1:
                 continue
             labels = labels.to(torch.float)
-            words, covarep, covarepLen, facet, facetLen, inputLen, labels = words.to(device), covarep.to(device), covarepLen.to(device), facet.to(device), facetLen.to(device), inputLen.to(device), labels.to(device)
+            words, covarep, facet, inputLen, labels = words.to(device), covarep.to(device), facet.to(device), inputLen.to(device), labels.to(device)
             optimizer.zero_grad()
 
-            outputs = net(words, covarep, covarepLen, facet, facetLen, inputLen)
+            outputs = net(words, covarep, facet, inputLen)
             if gc.dataset == "iemocap":
                 for l in torch.ge(outputs, 0).to(torch.long):
                     output_all.append(l)

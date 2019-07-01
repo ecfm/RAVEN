@@ -5,6 +5,7 @@ import torch
 import torch.utils.data as Data
 import numpy as np
 from consts import global_consts as gc
+import pdb
 import sys
 
 if gc.SDK_PATH is None:
@@ -84,11 +85,9 @@ class MOSIDataset(Data.Dataset):
             self.dataset = MOSIDataset.validset
 
         self.covarepInput = self.dataset.covarepInput[:]
-        self.covarepLength = self.dataset.covarepLength[:]
         self.wordLength = self.dataset.wordLength[:]
         self.wordInput = self.dataset.wordInput[:]
         self.facetInput = self.dataset.facetInput[:]
-        self.facetLength = self.dataset.facetLength[:]
         self.labelOutput = self.dataset.labelOutput[:]
 
     def load_data(self):
@@ -140,8 +139,9 @@ class MOSIDataset(Data.Dataset):
         words = defaultdict(lambda: [])
         facets = defaultdict(lambda: [])
         covareps = defaultdict(lambda: [])
-        segment_field_pairs = [(labels, label_field), (words, word_field), (facets, facet_field),
+        segment_field_pairs = [(words, word_field), (labels, label_field), (facets, facet_field),
                                (covareps, covarep_field)]
+        field_dim = {word_field: gc.wordDim, facet_field: gc.facetDim, covarep_field: gc.covarepDim}
         field_with_nan = [label_field, facet_field, covarep_field]
         for vid_label_word in dataset[label_field].keys():
             # define a regular expression to extract the video ID out of the keys
@@ -156,11 +156,13 @@ class MOSIDataset(Data.Dataset):
                         assert len(dataset[field][vid_label_word]['features']) == 1
                         features = dataset[field][vid_label_word]['features'][0]
                     else:
-                        features = dataset[field][vid_label_word]['features']
+                        features = np.sum(dataset[field][vid_label_word]['features'], axis=0) / len(dataset[field][vid_label_word])
                 else:
                     print('Segment %s not found in sequence %s' % (vid_label_word, field))
                 if field in field_with_nan:
                     features = np.nan_to_num(features)
+                if len(features) == 0:
+                    features = np.zeros(field_dim[field])
                 segment_features[vid_label].append(features)
 
         for vid_label in labels.keys():
@@ -183,27 +185,19 @@ class MOSIDataset(Data.Dataset):
             dataset.wordInput.append(words[vid_label])
             # all the labels within the same segment are the same
             dataset.labelOutput.append(labels[vid_label][0])
-
-            lengths_to_append, to_append = normalize_len(facets[vid_label], gc.facetDim)
-            dataset.facetInput.append(to_append[:])
-            dataset.facetLength.append(lengths_to_append[:])
-
-            lengths_to_append, to_append = normalize_len(covareps[vid_label], gc.covarepDim)
-            dataset.covarepInput.append(to_append[:])
-            dataset.covarepLength.append(lengths_to_append[:])
+            dataset.facetInput.append(facets[vid_label])
+            # if len(dataset.facetInput) >= 358 and vid in testvid:
+            #     pdb.set_trace()
+            dataset.covarepInput.append(covareps[vid_label])
 
     def __getitem__(self, index):
         inputLen = self.wordLength[index]
         return torch.cat((torch.tensor(self.wordInput[index], dtype=torch.float32),
                           torch.zeros((gc.padding_len - len(self.wordInput[index]), gc.wordDim))), 0), \
-               torch.cat((torch.tensor(self.covarepInput[index], dtype=torch.float32), torch.zeros(
-                   (gc.padding_len - len(self.covarepInput[index]), gc.shift_padding_len, gc.covarepDim))), 0), \
-               torch.cat((torch.tensor(self.covarepLength[index], dtype=torch.long),
-                          torch.zeros(gc.padding_len - len(self.covarepLength[index]), dtype=torch.long)), 0), \
-               torch.cat((torch.tensor(self.facetInput[index], dtype=torch.float32), torch.zeros(
-                   (gc.padding_len - len(self.facetInput[index]), gc.shift_padding_len, gc.facetDim))), 0), \
-               torch.cat((torch.tensor(self.facetLength[index], dtype=torch.long),
-                          torch.zeros(gc.padding_len - len(self.facetLength[index]), dtype=torch.long)), 0), \
+               torch.cat((torch.tensor(self.covarepInput[index], dtype=torch.float32),
+                          torch.zeros((gc.padding_len - len(self.covarepInput[index]), gc.covarepDim))), 0), \
+               torch.cat((torch.tensor(self.facetInput[index], dtype=torch.float32),
+                          torch.zeros((gc.padding_len - len(self.facetInput[index]), gc.facetDim))), 0), \
                inputLen, torch.tensor(self.labelOutput[index]).squeeze()
 
     def __len__(self):
