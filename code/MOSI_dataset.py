@@ -5,18 +5,18 @@ import torch
 import torch.utils.data as Data
 import numpy as np
 from consts import global_consts as gc
-import pdb
 import sys
 
 if gc.SDK_PATH is None:
     print("SDK path is not specified! Please specify first in constants/paths.py")
     exit(0)
 else:
-    print("Added gc.SDK_PATH")
     import os
 
-    print(os.getcwd())
-    sys.path.append(gc.SDK_PATH)
+    print("Current dir: " + os.getcwd())
+    sys.path.append(os.path.abspath(gc.SDK_PATH))
+    print("Added gc.SDK_PATH = " + os.path.abspath(gc.SDK_PATH))
+
 
 import mmsdk.mmdatasdk.dataset.standard_datasets.CMU_MOSI.cmu_mosi_std_folds as std_folds
 
