@@ -63,6 +63,12 @@ def normalize_len(feature_array_list, dim):
         to_append.append(feature_array[:])
     return lengths_to_append, to_append
 
+def avg(intervals: np.array, features: np.array) -> np.array:
+    try:
+        return np.average(features, axis=0)
+    except:
+        return features
+
 
 class MOSIDataset(Data.Dataset):
     trainset = MOSISubdata("train")
@@ -133,7 +139,8 @@ class MOSIDataset(Data.Dataset):
         dataset.add_computational_sequences(label_recipe, destination=None)
         dataset.impute(label_field)
         dataset.align(label_field)
-        dataset.align(word_field)
+        # first we align to words with averaging, collapse_function receives a list of functions
+        dataset.align(word_field, collapse_functions=[avg])
 
         labels = defaultdict(lambda: [])
         words = defaultdict(lambda: [])
@@ -151,12 +158,9 @@ class MOSIDataset(Data.Dataset):
             for segment_features, field in segment_field_pairs:
                 features = []
                 if vid_label_word in dataset[field].keys():
-                    if field == label_field or field == word_field:
-                        # labels and words are references for alignment. 'features' only contains 1 word
-                        assert len(dataset[field][vid_label_word]['features']) == 1
-                        features = dataset[field][vid_label_word]['features'][0]
-                    else:
-                        features = np.sum(dataset[field][vid_label_word]['features'], axis=0) / len(dataset[field][vid_label_word])
+                    # labels and words are references for alignment. 'features' only contains 1 word
+                    assert len(dataset[field][vid_label_word]['features']) == 1
+                    features = dataset[field][vid_label_word]['features'][0]
                 else:
                     print('Segment %s not found in sequence %s' % (vid_label_word, field))
                 if field in field_with_nan:
